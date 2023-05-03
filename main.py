@@ -65,13 +65,30 @@ for bp_job in bp_jobs:
     job_detail= {}
 
        #job_title = bp_job.find("span").text
-    job_detail['job_title'] = bp_job.find("a", class_="jcs-JobTitle css-jspxzf eu4oa1w0").text
-        
-    job_detail["company_name"] = bp_job.find("span", class_="companyName").text
-    job_detail["job_location"] = bp_job.find("div", class_="companyLocation").text
+    try:    
+        job_detail['job_title'] = bp_job.find("a", class_="jcs-JobTitle css-jspxzf eu4oa1w0").text
 
+    except:
+        job_detail['job_title'] = "n/a"
+
+    try:    
+        job_detail["company_name"] = bp_job.find("span", class_="companyName").text
     
-    job_detail['job_link'] =  "https://in.indeed.com" + bp_job.a['href']
+    except:
+        job_detail["company_name"] = "n/a"
+    
+    try:
+        job_detail["job_location"] = bp_job.find("div", class_="companyLocation").text
+
+    except:
+        job_detail["job_location"] = "n/a"
+
+    try:
+        
+        job_detail['job_link'] =  "https://in.indeed.com" + bp_job.a['href']
+    
+    except:
+        job_detail['job_link'] = "n/a"
 
     
 
