@@ -15,103 +15,129 @@ import csv
 
 from sys import argv
 
-
-
 from webdriver_manager.chrome import ChromeDriverManager
 
 # Import date class from datetime module
 from datetime import date
 
-# Returns the current local date
+from flask import Flask, jsonify, request
+
 today = date.today()
 
-script, password = argv
+app = Flask(__name__)
 
-URL = "https://in.indeed.com/jobs?q=blue+prism&l=&from=searchOnHP&vjk=cd7b1e100d1b6d63"
-
-#page = requests.get(URL)
-
-#print(page.text)
-
-
-driver=webdriver.Chrome(service=Service(ChromeDriverManager().install()))
+@app.route('/', methods = ['GET','POST'])
+def home():
+    if request.method == "GET":
+        return jsonify({'data' : "Server is running"})
 
 
-wait = WebDriverWait(driver, 10)
-
-driver.get(URL)
-
-
-get_url = driver.current_url
-wait.until(EC.url_to_be(URL))
-
-
-if get_url == URL:
-
-
-    page_source = driver.page_source
-
-
-
-result = BeautifulSoup(page_source,features="html.parser")
-
-#bp_jobs = result.find_all("a", class_="jcs-JobTitle css-jspxzf eu4oa1w0")
-bp_jobs = result.find_all("div", class_="slider_container css-77eoo7 eu4oa1w0")
-
-job_details = []
-
-for bp_job in bp_jobs:
+@app.route('/home/<search_query>', methods = ['GET'])
     
-    job_detail= {}
+def search(search_query):
+    script, password = argv
 
-       #job_title = bp_job.find("span").text
-    try:    
-        job_detail['job_title'] = bp_job.find("a", class_="jcs-JobTitle css-jspxzf eu4oa1w0").text
+    search_query = search_query.replace(" ", "+")
 
-    except:
-        job_detail['job_title'] = "n/a"
+    URL = f"https://in.indeed.com/jobs?q={search_query}&l=&from=searchOnHP&vjk=cd7b1e100d1b6d63"
 
-    try:    
-        job_detail["company_name"] = bp_job.find("span", class_="companyName").text
-    
-    except:
-        job_detail["company_name"] = "n/a"
-    
-    try:
-        job_detail["job_location"] = bp_job.find("div", class_="companyLocation").text
 
-    except:
-        job_detail["job_location"] = "n/a"
 
-    try:
+    #page = requests.get(URL)
+
+    #print(page.text)
+
+
+    driver=webdriver.Chrome(service=Service(ChromeDriverManager().install()))
+
+
+    wait = WebDriverWait(driver, 10)
+
+    driver.get(URL)
+
+
+    get_url = driver.current_url
+    wait.until(EC.url_to_be(URL))
+
+
+    if get_url == URL:
+
+
+        page_source = driver.page_source
+
+
+
+    result = BeautifulSoup(page_source,features="html.parser")
+
+    #bp_jobs = result.find_all("a", class_="jcs-JobTitle css-jspxzf eu4oa1w0")
+    bp_jobs = result.find_all("div", class_="slider_container css-77eoo7 eu4oa1w0")
+
+    job_details = []
+
+    for bp_job in bp_jobs:
         
-        job_detail['job_link'] =  "https://in.indeed.com" + bp_job.a['href']
+        job_detail= {}
+
+        #job_title = bp_job.find("span").text
+        try:    
+            job_detail['job_title'] = bp_job.find("a", class_="jcs-JobTitle css-jspxzf eu4oa1w0").text
+
+        except:
+            job_detail['job_title'] = "n/a"
+
+        try:    
+            job_detail["company_name"] = bp_job.find("span", class_="companyName").text
+        
+        except:
+            job_detail["company_name"] = "n/a"
+        
+        try:
+            job_detail["job_location"] = bp_job.find("div", class_="companyLocation").text
+
+        except:
+            job_detail["job_location"] = "n/a"
+
+        try:
+            
+            job_detail['job_link'] =  "https://in.indeed.com" + bp_job.a['href']
+        
+        except:
+            job_detail['job_link'] = "n/a"
+
+        
+
+        job_details.append(job_detail)
     
-    except:
-        job_detail['job_link'] = "n/a"
 
+
+
+        
+
+    filename = 'job_data.csv'
+    with open(filename, 'w', newline='') as f:
+        w = csv.DictWriter(f,['job_title','company_name','job_location', 'job_link'])
+        w.writeheader()
+        for job_detail in job_details:
+            w.writerow(job_detail)
+
+    """ Send Email functionality """
+    search_query = search_query.replace("+", " ").upper()
+
+    receiver = "divyanduchoubey@gmail.com"
+    body = f"Hi,\n\nPFA INDEED Job Data for {search_query} Role. \n\n Thanks,\n Python Job Bot"
+
+
+    yag = yagmail.SMTP("divyanduchoubey1@gmail.com", password = password)
+
+    yag.send(
+            to=receiver,
+            subject= f"TOP {search_query} JOBS on Indeed - " + str(today),
+            contents=body, 
+            attachments=filename,
+        )
     
+    return jsonify(job_details)
 
-    job_details.append(job_detail)
-    
-
-filename = 'job_data.csv'
-with open(filename, 'w', newline='') as f:
-    w = csv.DictWriter(f,['job_title','company_name','job_location', 'job_link'])
-    w.writeheader()
-    for job_detail in job_details:
-        w.writerow(job_detail)
-
-
-receiver = "divyanduchoubey@gmail.com"
-body = "PFA INDEED Job Data FOR RPA DEV Blueprism Role. \n\n Thanks,\n Python Job Bot"
-
-
-yag = yagmail.SMTP("divyanduchoubey1@gmail.com", password = password)
-
-yag.send(
-    to=receiver,
-    subject=" TOP RPA Blueprism JOBS on Indeed - " + str(today),
-    contents=body, 
-    attachments=filename,
-)
+if __name__ == '__main__':
+  
+    app.run(debug = True)
